@@ -1,7 +1,10 @@
-import { Component } from 'react';
+import { useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import notifyOptions from './NotifyOptions/NotifyOptions';
+
+import notifyOptions from '../NotifyOptions/NotifyOptions';
+import dafaultContacts from '../data/contacts.json';
+import useLocalStorage from 'hooks/UseLocalStorage';
 
 import MainContainer from './MainContainer/MainContainer';
 import Section from './Section/Section';
@@ -9,38 +12,15 @@ import ContactForm from './ContactForm/ContactForm';
 import Header from './Header/Header';
 import ContactList from './ContactList/ContactList';
 import Filter from './Filter/Filter';
-import dafaultContacts from './contacts.json';
+
 import './App.module.css';
 
-const LS_KEY = 'contacts';
+export default function App() {
+  const [contacts, setContacts] = useLocalStorage('contacts', dafaultContacts);
+  const [filter, setFilter] = useState('');
 
-export class App extends Component {
-  state = {
-    contacts: dafaultContacts,
-    filter: '',
-  };
-
-  componentDidMount() {
-    const contactsLS = localStorage.getItem(LS_KEY);
-    const parsedContacts = JSON.parse(contactsLS);
-
-    if (parsedContacts) {
-      this.setState({ contacts: parsedContacts });
-    }
-
-    // console.log(parsedContacts);
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.contacts !== prevState.contacts) {
-      // console.log('update contacts');
-
-      localStorage.setItem(LS_KEY, JSON.stringify(this.state.contacts));
-    }
-  }
-
-  addContact = newContact => {
-    const includesContact = this.state.contacts.filter(
+  const addContact = newContact => {
+    const includesContact = contacts.filter(
       contact =>
         contact.name.toLowerCase().trim() ===
           newContact.name.toLowerCase().trim() ||
@@ -53,30 +33,24 @@ export class App extends Component {
         notifyOptions
       );
     } else {
-      this.setState(prevState => {
-        return {
-          contacts: [newContact, ...prevState.contacts],
-        };
-      });
-      toast.success(
-        `${newContact.name} was successfully added to your contacts`,
-        notifyOptions
-      );
+      setContacts(contacts => [newContact, ...contacts]);
+      // setContacts(prevState => [newContact, ...prevState]);
     }
-  };
-
-  searchFilter = e => {
-    this.setState({ filter: e.currentTarget.value.toLowerCase() });
-  };
-
-  deleteContact = id => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== id),
-    }));
-
-    const deletedContact = this.state.contacts.find(
-      contact => contact.id === id
+    toast.success(
+      `${newContact.name} was successfully added to your contacts`,
+      notifyOptions
     );
+  };
+
+  const searchFilter = e => {
+    setFilter(e.currentTarget.value.toLowerCase());
+  };
+
+  const deleteContact = id => {
+    setContacts(contacts.filter(contact => contact.id !== id));
+    // setContacts(prevState => prevState.filter(contact => contact.id !== id));
+
+    const deletedContact = contacts.find(contact => contact.id === id);
     if (deletedContact) {
       toast.warn(
         `${deletedContact.name} was successfully deleted from your contacts`,
@@ -85,25 +59,19 @@ export class App extends Component {
     }
   };
 
-  render() {
-    const { contacts, filter } = this.state;
-    const filteredContact = contacts.filter(contact =>
-      contact.name.toLowerCase().includes(filter)
-    );
+  const filteredContact = contacts.filter(contact =>
+    contact.name.toLowerCase().includes(filter)
+  );
 
-    return (
-      <MainContainer>
-        <Section title="Phonebook">
-          <ContactForm onAddContact={this.addContact} />
-          <Header title="Contacts" />
-          <Filter value={filter} onChange={this.searchFilter} />
-          <ContactList
-            contacts={filteredContact}
-            onDelete={this.deleteContact}
-          />
-        </Section>
-        <ToastContainer />
-      </MainContainer>
-    );
-  }
+  return (
+    <MainContainer>
+      <Section title="Phonebook">
+        <ContactForm onAddContact={addContact} />
+        <Header title="Contacts" />
+        <Filter value={filter} onChange={searchFilter} />
+        <ContactList contacts={filteredContact} onDelete={deleteContact} />
+      </Section>
+      <ToastContainer />
+    </MainContainer>
+  );
 }
